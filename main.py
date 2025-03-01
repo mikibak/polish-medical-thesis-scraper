@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import concurrent.futures
 import time
 
@@ -18,9 +19,12 @@ CHROMEDRIVER_PATH = "/usr/lib/chromium/chromedriver-linux64/chromedriver"
 # Base URL
 BASE_URL = "https://ppm.edu.pl/globalResultList.seam?r=phd&tab=PHD&lang=pl&qp=openAccess%253Dtrue%2526author%253Aauthor%253D%2526hasFileAttached%253Dtrue%2526date1%253D%2526date2%253D&pn=1&p=top&ps=100"
 
+# Allowed licenses
+ALLOWED_LICENSES = {"CC BY", "CC BY-SA", "CC BY-NC"}
+
 # Configure Selenium options
 chrome_options = Options()
-chrome_options.add_argument("--headless")  # Run headless mode
+chrome_options.add_argument("--headless")  # Run in headless mode
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
@@ -28,7 +32,7 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 service = Service(CHROMEDRIVER_PATH)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 driver.get(BASE_URL)
-time.sleep(10)  # Allow page to load (increased to 10s)
+time.sleep(10)  # Allow page to load
 
 doctorates = []
 scraped_pages = 0
@@ -57,49 +61,63 @@ def scrape_doctorate(doctorate_url):
         file_links = [elem.get_attribute("href") for elem in local_driver.find_elements(By.CSS_SELECTOR, ".fileDownloadLink")]
 
         local_driver.quit()
-        logging.info(f"Scraped doctorate: {doctorate_url} | License: {license_text} | Files: {len(file_links)}")
-        return license_text, file_links
+
+        # Filter based on license
+        if license_text in ALLOWED_LICENSES:
+            logging.info(f"✅ Allowed license: {license_text} - {doctorate_url}")
+            return license_text, file_links
+        else:
+            logging.info(f"❌ Skipped due to license: {license_text} - {doctorate_url}")
+            return None, None  # Mark as skipped
 
     except Exception as e:
         logging.error(f"Error scraping {doctorate_url}: {e}")
-        return "Unknown", []
+        return None, None
 
 
 def scrape_page():
     """Extract doctorate details from the current search results page."""
     logging.info("Scraping current search results page...")
 
-    entries = driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
-    logging.info(f"Found {len(entries)} doctorates on this page.")
+    try:
+        entries = driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
+        logging.info(f"Found {len(entries)} doctorates on this page.")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        future_to_entry = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_entry = {}
 
-        for entry in entries:
-            try:
-                title_elem = entry.find_element(By.CSS_SELECTOR, ".entity-row-title a")
-                title = title_elem.text.strip()
-                doctorate_url = title_elem.get_attribute("href")
+            for i in range(len(entries)):
+                try:
+                    # Re-locate elements to avoid stale element error
+                    entries = driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
+                    title_elem = entries[i].find_element(By.CSS_SELECTOR, ".entity-row-title a")
+                    title = title_elem.text.strip()
+                    doctorate_url = title_elem.get_attribute("href")
 
-                # Process each doctorate concurrently
-                future = executor.submit(scrape_doctorate, doctorate_url)
-                future_to_entry[future] = (title, doctorate_url)
+                    # Process each doctorate concurrently
+                    future = executor.submit(scrape_doctorate, doctorate_url)
+                    future_to_entry[future] = (title, doctorate_url)
 
-            except Exception as e:
-                logging.error(f"Error extracting entry: {e}")
+                except (StaleElementReferenceException, NoSuchElementException):
+                    logging.warning("⚠️ Stale element encountered. Skipping this entry.")
+                    continue
 
-        for future in concurrent.futures.as_completed(future_to_entry):
-            title, doctorate_url = future_to_entry[future]
-            license_text, file_links = future.result()
+            for future in concurrent.futures.as_completed(future_to_entry):
+                title, doctorate_url = future_to_entry[future]
+                license_text, file_links = future.result()
 
-            # Store data
-            doctorates.append({
-                "Title": title,
-                "URL": doctorate_url,
-                "License": license_text,
-                "Files": file_links
-            })
-            logging.info(f"Doctorate processed: {title}")
+                # Store data only if the license is allowed
+                if license_text:
+                    doctorates.append({
+                        "Title": title,
+                        "URL": doctorate_url,
+                        "License": license_text,
+                        "Files": file_links
+                    })
+                    logging.info(f"✅ Doctorate added: {title}")
+
+    except Exception as e:
+        logging.error(f"Error scraping page: {e}")
 
 
 while True:
