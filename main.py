@@ -5,6 +5,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
+import pandas as pd
 
 # Logging setup
 logging.basicConfig(
@@ -13,7 +14,7 @@ logging.basicConfig(
 )
 
 # Path to ChromeDriver
-CHROMEDRIVER_PATH = "/usr/lib/chromium/chromedriver-linux64/chromedriver"
+CHROMEDRIVER_PATH = "C:/Users/kubak/PycharmProjects/medical-thesis/polish-medical-thesis-scraper/chromedriver.exe"
 
 # List of pre-filtered URLs (already contains only allowed licenses)
 FILTERED_URLS = [
@@ -102,5 +103,5 @@ driver.quit()
 
 # Output results
 logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}")
-for doc in doctorates:
-    logging.info(doc)
+df_doc = pd.DataFrame(data=doctorates)
+df_doc.to_csv("doctorates.csv", index=False)
