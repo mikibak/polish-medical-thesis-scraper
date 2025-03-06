@@ -28,10 +28,8 @@ def remove_xml_parts(file_path, i):
     clean_text = re.sub(r'\[\d+\]', '', final_text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
-    df_doc["Text"][i] = clean_text
-
-
-    print(f"XML parts removed from: {file_path}")
+    # Update the DataFrame with the extracted text
+    df_doc.at[i, "Text"] = clean_text
 
 # Usage example
 if __name__ == "__main__":
@@ -42,6 +40,10 @@ if __name__ == "__main__":
     for i in range(len(df_doc)):
         title = df_doc["Title"][i].replace(" ", "_")
         URL.urlretrieve(df_doc["File"][i], filename=f"{title}.pdf")
-        subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "--output", "./out/", "processFulltextDocument"])
-        remove_xml_parts(f"./out/{title}.grobid.tei.xml", i)
+        subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"])
+        print(f"Processing {title}.grobid.tei.xml")
+        remove_xml_parts(f"{title}.grobid.tei.xml", i)
         os.remove(f"{title}.pdf")
+        os.remove(f"{title}.grobid.tei.xml")
+
+    df_doc.to_csv("doctorates_with_text.csv", index=False)
