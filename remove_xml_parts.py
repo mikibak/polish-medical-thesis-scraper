@@ -28,8 +28,7 @@ def remove_xml_parts(file_path, i):
     clean_text = re.sub(r'\[\d+\]', '', final_text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
-    # Update the DataFrame with the extracted text
-    df_doc.at[i, "Text"] = clean_text
+    return clean_text
 
 # Usage example
 if __name__ == "__main__":
@@ -38,12 +37,19 @@ if __name__ == "__main__":
     display.display(df_doc)
 
     for i in range(len(df_doc)):
-        title = df_doc["Title"][i].replace(" ", "_")
-        URL.urlretrieve(df_doc["File"][i], filename=f"{title}.pdf")
-        subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"])
-        print(f"Processing {title}.grobid.tei.xml")
-        remove_xml_parts(f"{title}.grobid.tei.xml", i)
-        os.remove(f"{title}.pdf")
-        os.remove(f"{title}.grobid.tei.xml")
+        try:
+            title = df_doc["Title"][i].replace(" ", "_").replace('./', '')
+            URL.urlretrieve(df_doc["File"][i], filename=f"{title}.pdf")
+            subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"])
+            print(f"Processing {title}.grobid.tei.xml")
+            df_doc.at[i, "Text"] = remove_xml_parts(f"{title}.grobid.tei.xml", i)
+            os.remove(f"{title}.grobid.tei.xml")
+        except:
+            print(f"Error processing {title}.grobid.tei.xml")
+        try:
+            os.remove(f"{title}.pdf")
+        except:
+            print(f"Error removing {title}.pdf")
+            continue
 
-    df_doc.to_csv("doctorates_with_text.csv", index=False)
+    df_doc.to_csv("doctorates_with_text.csv",sep='|',index=False)
