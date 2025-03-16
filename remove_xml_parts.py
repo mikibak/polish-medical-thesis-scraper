@@ -37,6 +37,7 @@ if __name__ == "__main__":
     display.display(df_doc)
 
     for i in range(len(df_doc)):
+        print("Processing document ", i+1, "/", len(df_doc))
         try:
             title = df_doc["Title"][i].replace(" ", "_").replace('./', '')
             URL.urlretrieve(df_doc["File"][i], filename=f"{title}.pdf")
