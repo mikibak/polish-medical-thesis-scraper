@@ -32,7 +32,7 @@ def remove_xml_parts(file_path, i):
 
 # Usage example
 if __name__ == "__main__":
-    df_doc = pd.read_csv("doctorates.csv")
+    df_doc = pd.read_csv("./Smaller_Files/doctorates_3.csv")
 
     display.display(df_doc)
 
@@ -53,4 +53,5 @@ if __name__ == "__main__":
             print(f"Error removing {title}.pdf")
             continue
 
-    df_doc.to_csv("doctorates_with_text.csv",sep='|',index=False)
+    df_doc = df_doc.dropna(subset=["Text"])
+    df_doc.to_csv("doctorates_with_text_3.csv", sep='|', index=False)
