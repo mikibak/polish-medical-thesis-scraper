@@ -7,7 +7,7 @@ import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 
 
-def scrape_page(url, doctorates, empty_doctorates):
+def scrape_page(license, url, doctorates, empty_doctorates):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     driver.get(url)
@@ -35,8 +35,9 @@ def scrape_page(url, doctorates, empty_doctorates):
 
                     if file_link:
                         doctorates.append({
-                            "Title": title,
+                            "Tytuł": title,
                             "URL": doctorate_url,
+                            "Licencja": license,
                             "File": file_link
                         })
                         logging.info(f"✅ Added: {title} - {file_link}")
@@ -77,9 +78,9 @@ if __name__ == "__main__":
 
     # List of pre-filtered URLs (already contains only allowed licenses)
     FILTERED_URLS = [
-        "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505",
-        "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532",
-        "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"
+        ["CC BY-NC", "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505"],
+        ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"],
+        ["CC BY", "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"]
     ]
 
     # Configure Selenium options
@@ -96,7 +97,7 @@ if __name__ == "__main__":
 
     # Scrape each filtered URL
     for url in FILTERED_URLS:
-        scrape_page(url, doctorates, empty_doctorates)
+        scrape_page(url[0], url[1], doctorates, empty_doctorates)
 
     # Close WebDriver
     driver.quit()
