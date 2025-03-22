@@ -12,9 +12,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Path to ChromeDriver
-CHROMEDRIVER_PATH = "/usr/lib/chromium/chromedriver-linux64/chromedriver"
-
 # List of pre-filtered URLs (already contains only allowed licenses)
 FILTERED_URLS = [
     "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505",
@@ -29,8 +26,7 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
 # Initialize WebDriver
-service = Service(CHROMEDRIVER_PATH)
-driver = webdriver.Chrome(service=service, options=chrome_options)
+driver = webdriver.Chrome(options=chrome_options)
 
 doctorates = []
 
