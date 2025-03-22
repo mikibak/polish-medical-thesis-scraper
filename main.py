@@ -14,9 +14,9 @@ id = 0
 
 def save_doctorates_to_csv(doctorates):
     # Get the field names from the first dictionary
-    fieldnames = ["Title", "URL", "License"]
+    fieldnames = ["ID", "Title", "URL", "License"]
     
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for doc in doctorates:
@@ -87,8 +87,8 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
         except Exception as e:
             logging.error(f"Error navigating to the next page: {e}")
             break  # If there's an error (no next page or click failed), stop the loop
-        finally:
-            return empty_doctorates, id
+    return empty_doctorates, id
+
 
 if __name__ == "__main__":
     # Logging setup
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     for url in FILTERED_URLS:
         added_empty_doctorates, added_id = scrape_page(url[0], url[1], doctorates, empty_doctorates, id)
         empty_doctorates += added_empty_doctorates
-        added_id += id
+        id += added_id
 
     # Close WebDriver
     driver.quit()
