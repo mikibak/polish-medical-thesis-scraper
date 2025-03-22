@@ -1,5 +1,6 @@
 import logging
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -7,9 +8,8 @@ import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import csv
 import pandas as pd
-
-empty_doctorates = 0
-id = 0
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 def save_doctorates_to_csv(doctorates):
@@ -33,23 +33,18 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
 
     while True:
         try:
-            entries = driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
+            entries = get_entries()
             logging.info(f"Found {len(entries)} doctorates on this page.")
 
             for i in range(len(entries)):
                 try:
                     # Re-locate elements to avoid stale element error
-                    entries = driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
-                    title_elem = entries[i].find_element(By.CSS_SELECTOR, ".entity-row-title a")
-                    title = title_elem.text.strip()
-                    doctorate_url = title_elem.get_attribute("href")
+                    entries = get_entries()
+                    title, doctorate_url = get_title_and_url(entries[i])
+                    file_link = get_file_link(entries[i])
 
-                    # Get file download link
-                    try:
-                        file_elem = entries[i].find_element(By.CSS_SELECTOR, ".fileDownloadLink")
-                        file_link = file_elem.get_attribute("href")
-                    except:
-                        file_link = None  # No file available
+                    if not file_link:
+                        file_link = attempt_to_get_file_from_overlay()
 
                     if file_link:
                         doctorates.append({
@@ -73,20 +68,82 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
             logging.error(f"Error scraping page: {e}")
             break  # Break out of the loop if there's an error
 
+        # Pagination handling
+        empty_doctorates, id = handle_pagination(empty_doctorates, id)
+
+    return empty_doctorates, id
+
+
+def get_entries():
+    """Retrieve all entries from the current page."""
+    return driver.find_elements(By.CSS_SELECTOR, ".entities-table-row")
+
+
+def get_title_and_url(entry):
+    """Extract title and URL from a given entry."""
+    title_elem = entry.find_element(By.CSS_SELECTOR, ".entity-row-title a")
+    title = title_elem.text.strip()
+    doctorate_url = title_elem.get_attribute("href")
+    return title, doctorate_url
+
+
+def get_file_link(entry):
+    """Try to get the file download link from the entry."""
+    try:
+        file_elem = entry.find_element(By.CSS_SELECTOR, ".fileDownloadLink")
+        return file_elem.get_attribute("href")
+    except:
+        return None  # No file available
+
+
+def attempt_to_get_file_from_overlay():
+    """Attempt to retrieve file link by clicking the copy icon and opening the overlay."""
+    button_selector = "i.fa.fa-copy"
+    for attempt in range(3):  # Retry mechanism
         try:
-            # Check for "Next" button to navigate to the next page
-            next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
-            if "ui-state-disabled" in next_button.get_attribute("class"):
-                logging.info("Reached the last page. No more pages to scrape.")
-                break  # No more pages, exit the loop
+            icon_elem = WebDriverWait(driver, 2).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, button_selector))
+            )
+            ActionChains(driver).move_to_element(icon_elem).click().perform()
 
-            logging.info("Clicking Next page...")
-            next_button.click()
-            time.sleep(5)  # Wait for next page to load
+            # Wait for the overlay panel to appear
+            WebDriverWait(driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, ".multiFilesDownloadOverlayPanel.ui-overlay-visible")
+                )
+            )
+            break  # Exit loop if click succeeds
+        except Exception:
+            logging.warning(f"Retry {attempt + 1}/3: Failed to click copy icon, retrying...")
+            continue
 
-        except Exception as e:
-            logging.error(f"Error navigating to the next page: {e}")
-            break  # If there's an error (no next page or click failed), stop the loop
+    time.sleep(2)  # Ensure files are loaded
+
+    # Get all file links inside the overlay panel
+    file_elems = driver.find_elements(By.CSS_SELECTOR, ".multiFilesDownloadOverlayPanel .fileDownloadLink")
+    if file_elems:
+        return file_elems[0].get_attribute("href")  # Select the first file
+    else:
+        logging.warning(f"⚠️ No file links found in overlay panel.")
+        return None
+
+
+def handle_pagination(empty_doctorates, id):
+    """Handle pagination and navigate to the next page."""
+    try:
+        # Check for "Next" button to navigate to the next page
+        next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
+        if "ui-state-disabled" in next_button.get_attribute("class"):
+            logging.info("Reached the last page. No more pages to scrape.")
+            return empty_doctorates, id  # No more pages, exit the loop
+
+        logging.info("Clicking Next page...")
+        next_button.click()
+        time.sleep(5)  # Wait for next page to load
+
+    except Exception as e:
+        logging.error(f"Error navigating to the next page: {e}")
+
     return empty_doctorates, id
 
 
