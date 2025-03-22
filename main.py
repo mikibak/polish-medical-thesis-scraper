@@ -6,31 +6,8 @@ from selenium.webdriver.chrome.options import Options
 import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 
-# Logging setup
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
 
-# List of pre-filtered URLs (already contains only allowed licenses)
-FILTERED_URLS = [
-    "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505",
-    "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532",
-    "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"
-]
-
-# Configure Selenium options
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # Run headless mode for speed
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-
-# Initialize WebDriver
-driver = webdriver.Chrome(options=chrome_options)
-
-doctorates = []
-
-def scrape_page(url):
+def scrape_page(url, doctorates, empty_doctorates):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     driver.get(url)
@@ -64,6 +41,7 @@ def scrape_page(url):
                         })
                         logging.info(f"✅ Added: {title} - {file_link}")
                     else:
+                        empty_doctorates += 1
                         logging.warning(f"⚠️ No file link found for: {title}")
 
                 except (StaleElementReferenceException, NoSuchElementException) as e:
@@ -89,14 +67,41 @@ def scrape_page(url):
             logging.error(f"Error navigating to the next page: {e}")
             break  # If there's an error (no next page or click failed), stop the loop
 
-# Scrape each filtered URL
-for url in FILTERED_URLS:
-    scrape_page(url)
 
-# Close WebDriver
-driver.quit()
+if __name__ == "__main__":
+    # Logging setup
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO
+    )
 
-# Output results
-logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}")
-for doc in doctorates:
-    logging.info(doc)
+    # List of pre-filtered URLs (already contains only allowed licenses)
+    FILTERED_URLS = [
+        "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505",
+        "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532",
+        "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"
+    ]
+
+    # Configure Selenium options
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # Run headless mode for speed
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Initialize WebDriver
+    driver = webdriver.Chrome(options=chrome_options)
+
+    doctorates = []
+    empty_doctorates = 0
+
+    # Scrape each filtered URL
+    for url in FILTERED_URLS:
+        scrape_page(url, doctorates, empty_doctorates)
+
+    # Close WebDriver
+    driver.quit()
+
+    # Output results
+    logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached: {empty_doctorates}")
+    for doc in doctorates:
+        logging.info(doc)
