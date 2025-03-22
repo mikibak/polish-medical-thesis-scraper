@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import csv
+import pandas as pd
 
 empty_doctorates = 0
 id = 0
@@ -13,13 +14,13 @@ id = 0
 
 def save_doctorates_to_csv(doctorates):
     # Get the field names from the first dictionary
-    fieldnames = doctorates[0].keys()
-
-    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
+    fieldnames = ["Title", "URL", "License"]
+    
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-
         writer.writeheader()
-        writer.writerows(doctorates)
+        for doc in doctorates:
+            writer.writerow({key: doc.get(key, "") for key in fieldnames})
 
     print(f"Metadata saved")
 
@@ -131,3 +132,6 @@ if __name__ == "__main__":
     logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached: {empty_doctorates}")
 
     save_doctorates_to_csv(doctorates)
+
+    df_doc = pd.DataFrame(data=doctorates)
+    df_doc.to_csv("doctorates.csv", index=False)
