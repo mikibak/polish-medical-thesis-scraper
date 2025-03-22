@@ -5,13 +5,30 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
+import csv
+
+empty_doctorates = 0
+id = 0
 
 
-def scrape_page(license, url, doctorates, empty_doctorates):
+def save_doctorates_to_csv(doctorates):
+    # Get the field names from the first dictionary
+    fieldnames = doctorates[0].keys()
+
+    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        writer.writerows(doctorates)
+
+    print(f"Metadata saved")
+
+
+def scrape_page(license, url, doctorates, empty_doctorates, id):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     driver.get(url)
-    time.sleep(5)  # Wait for the page to load
+    time.sleep(2)  # Wait for the page to load
 
     while True:
         try:
@@ -35,12 +52,14 @@ def scrape_page(license, url, doctorates, empty_doctorates):
 
                     if file_link:
                         doctorates.append({
-                            "Tytuł": title,
+                            "Title": title,
                             "URL": doctorate_url,
-                            "Licencja": license,
+                            "License": license,
+                            "ID": id,
                             "File": file_link
                         })
-                        logging.info(f"✅ Added: {title} - {file_link}")
+                        id += 1
+                        logging.info(f"✅ Added {id}: {title} - {file_link}")
                     else:
                         empty_doctorates += 1
                         logging.warning(f"⚠️ No file link found for: {title}")
@@ -67,7 +86,8 @@ def scrape_page(license, url, doctorates, empty_doctorates):
         except Exception as e:
             logging.error(f"Error navigating to the next page: {e}")
             break  # If there's an error (no next page or click failed), stop the loop
-
+        finally:
+            return empty_doctorates, id
 
 if __name__ == "__main__":
     # Logging setup
@@ -94,15 +114,20 @@ if __name__ == "__main__":
 
     doctorates = []
     empty_doctorates = 0
+    id = 0
+    added_empty_doctorates = 0
+    added_id = 0
 
     # Scrape each filtered URL
     for url in FILTERED_URLS:
-        scrape_page(url[0], url[1], doctorates, empty_doctorates)
+        added_empty_doctorates, added_id = scrape_page(url[0], url[1], doctorates, empty_doctorates, id)
+        empty_doctorates += added_empty_doctorates
+        added_id += id
 
     # Close WebDriver
     driver.quit()
 
     # Output results
     logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached: {empty_doctorates}")
-    for doc in doctorates:
-        logging.info(doc)
+
+    save_doctorates_to_csv(doctorates)
