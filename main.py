@@ -69,7 +69,20 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
             break  # Break out of the loop if there's an error
 
         # Pagination handling
-        empty_doctorates, id = handle_pagination(empty_doctorates, id)
+        try:
+            # Check for "Next" button to navigate to the next page
+            next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
+            if "ui-state-disabled" in next_button.get_attribute("class"):
+                logging.info("Reached the last page. No more pages to scrape.")
+                return empty_doctorates, id  # No more pages, exit the loop
+
+            logging.info("Clicking Next page...")
+            next_button.click()
+            time.sleep(5)  # Wait for next page to load
+
+        except Exception as e:
+            logging.error(f"Error navigating to the next page. Reached the last page.")
+            break
 
     return empty_doctorates, id
 
@@ -129,25 +142,6 @@ def attempt_to_get_file_from_overlay():
         return None
 
 
-def handle_pagination(empty_doctorates, id):
-    """Handle pagination and navigate to the next page."""
-    try:
-        # Check for "Next" button to navigate to the next page
-        next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
-        if "ui-state-disabled" in next_button.get_attribute("class"):
-            logging.info("Reached the last page. No more pages to scrape.")
-            return empty_doctorates, id  # No more pages, exit the loop
-
-        logging.info("Clicking Next page...")
-        next_button.click()
-        time.sleep(5)  # Wait for next page to load
-
-    except Exception as e:
-        logging.error(f"Error navigating to the next page: {e}")
-
-    return empty_doctorates, id
-
-
 if __name__ == "__main__":
     # Logging setup
     logging.basicConfig(
@@ -157,8 +151,8 @@ if __name__ == "__main__":
 
     # List of pre-filtered URLs (already contains only allowed licenses)
     FILTERED_URLS = [
-        ["CC BY-NC", "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505"],
         ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"],
+        ["CC BY-NC", "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505"],
         ["CC BY", "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"]
     ]
 
