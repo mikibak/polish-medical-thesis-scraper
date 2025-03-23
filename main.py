@@ -101,9 +101,10 @@ def attempt_to_get_file_from_overlay():
     button_selector = "i.fa.fa-copy"
     for attempt in range(3):  # Retry mechanism
         try:
-            icon_elem = WebDriverWait(driver, 2).until(
+            icon_elem = WebDriverWait(driver, 4).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, button_selector))
             )
+            ActionChains(driver).move_to_element(icon_elem).click().perform()
             ActionChains(driver).move_to_element(icon_elem).click().perform()
 
             # Wait for the overlay panel to appear
