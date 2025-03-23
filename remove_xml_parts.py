@@ -8,12 +8,16 @@ import pandas as pd
 import IPython.display as display
 import subprocess
 
+
 def remove_xml_parts(file_path, i):
     """Remove XML parts from the given XML file."""
 
     # save title of file
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
+
+    # remove all citations and references in <ref> tags (and whitespaces in front of them)
+    content = re.sub(r'\s*<ref[^>]*>.*?</ref>', '', content, flags=re.S)
 
     # Step 1: Extract only the <p> content
     p_matches = re.findall(r'<p>(.*?)</p>', content, re.S)
@@ -30,6 +34,7 @@ def remove_xml_parts(file_path, i):
 
     return clean_text
 
+
 # Usage example
 if __name__ == "__main__":
     df_doc = pd.read_csv("./Smaller_Files/doctorates_3.csv")
@@ -41,9 +46,14 @@ if __name__ == "__main__":
         try:
             title = df_doc["Title"][i].replace(" ", "_").replace('./', '')
             URL.urlretrieve(df_doc["File"][i], filename=f"{title}.pdf")
-            subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"])
+            #subprocess.run(["python3", "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"])
+            subprocess.run(
+                [sys.executable, "-m", "grobid_client.grobid_client", "--input", "./", "processFulltextDocument"],
+                cwd=os.getcwd())
             print(f"Processing {title}.grobid.tei.xml")
             df_doc.at[i, "Text"] = remove_xml_parts(f"{title}.grobid.tei.xml", i)
+            # with open(f"{title}.txt", "w", encoding="utf-8") as file:
+            #     file.write(df_doc.at[i, "Text"])
             os.remove(f"{title}.grobid.tei.xml")
         except:
             print(f"Error processing {title}.grobid.tei.xml")
