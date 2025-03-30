@@ -12,5 +12,5 @@ for i in range(len(df)):
         file.write(str(df['Text'][i]))
 
 df.drop(columns=['Text'], inplace=True)
-df.to_csv('./doctorates_without_na/doctorates_links_2.csv', sep='|', index=False)
+df.to_csv('./doctorates_licenses_and_file_links/doctorates_links_2.csv', sep='|', index=False)
 
