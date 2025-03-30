@@ -16,7 +16,7 @@ def save_doctorates_to_csv(doctorates):
     # Get the field names from the first dictionary
     fieldnames = ["ID", "Title", "URL", "License"]
     
-    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
+    with open("scraper/doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for doc in doctorates:
@@ -151,9 +151,7 @@ if __name__ == "__main__":
 
     # List of pre-filtered URLs (already contains only allowed licenses)
     FILTERED_URLS = [
-        ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"],
-        ["CC BY-NC", "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505"],
-        ["CC BY", "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"]
+        ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"]
     ]
 
     # Configure Selenium options
@@ -186,4 +184,4 @@ if __name__ == "__main__":
     save_doctorates_to_csv(doctorates)
 
     df_doc = pd.DataFrame(data=doctorates)
-    df_doc.to_csv("doctorates.csv", index=False)
+    df_doc.to_csv("scraper/file_links.csv", index=False)
