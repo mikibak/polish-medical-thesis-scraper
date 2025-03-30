@@ -151,7 +151,7 @@ if __name__ == "__main__":
     )
 
     # List of pre-filtered URLs (already contains only allowed licenses)
-    with open('config.json', 'r') as f:
+    with open('scraper/config.json', 'r') as f:
         config = json.load(f)
         FILTERED_URLS = config["FILTERED_URLS"]
 
