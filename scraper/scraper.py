@@ -17,7 +17,7 @@ def save_doctorates_to_csv(doctorates):
     # Get the field names from the first dictionary
     fieldnames = ["ID", "Title", "URL", "License"]
     
-    with open("scraper/doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
+    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for doc in doctorates:
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     )
 
     # List of pre-filtered URLs (already contains only allowed licenses)
-    with open('scraper/config.json', 'r') as f:
+    with open('config.json', 'r') as f:
         config = json.load(f)
         FILTERED_URLS = config["FILTERED_URLS"]
 
@@ -186,4 +186,4 @@ if __name__ == "__main__":
     save_doctorates_to_csv(doctorates)
 
     df_doc = pd.DataFrame(data=doctorates)
-    df_doc.to_csv("scraper/file_links.csv", index=False)
+    df_doc.to_csv("file_links.csv", index=False)
