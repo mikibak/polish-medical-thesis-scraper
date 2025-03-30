@@ -95,10 +95,10 @@ if __name__ == "__main__":
     display.display(df_doc)
     doctorate_count = len(df_doc)
 
-    timeout_counter = 10
+    timeout_counter = 1
     while len(next(os.walk('doct'))[1]) < doctorate_count and timeout_counter > 0:
         timeout_counter -= 1
-        with ThreadPoolExecutor(1) as executor:
+        with ThreadPoolExecutor() as executor:
             executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
 
     df_doc = df_doc.dropna(subset=["Text"])
