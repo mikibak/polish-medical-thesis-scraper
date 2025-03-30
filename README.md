@@ -38,10 +38,10 @@ python pdf_to_text/download_and_process_pdfs.py
 This will extract text from the downloaded PDFs and save them as `.txt` files.
 
 ## Contributors
-- **mikibak**
-- **kubson0226**
-- **kubix23**
-- **cariotic**
+- [**mikibak**](https://github.com/mikibak)
+- [**kubson0226**](https://github.com/kubson0226)
+- [**kubix23**](https://github.com/kubix23)
+- [**cariotic**](https://github.com/cariotic)
 
 ## License
 This project is licensed under the MIT license.
