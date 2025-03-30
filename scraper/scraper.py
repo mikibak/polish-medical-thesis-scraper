@@ -10,6 +10,7 @@ import csv
 import pandas as pd
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import json
 
 
 def save_doctorates_to_csv(doctorates):
@@ -150,9 +151,9 @@ if __name__ == "__main__":
     )
 
     # List of pre-filtered URLs (already contains only allowed licenses)
-    FILTERED_URLS = [
-        ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"]
-    ]
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+        FILTERED_URLS = config["FILTERED_URLS"]
 
     # Configure Selenium options
     chrome_options = Options()
