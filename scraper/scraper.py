@@ -45,7 +45,7 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                     file_link = get_file_link(entries[i])
 
                     if not file_link:
-                        file_link = attempt_to_get_file_from_overlay()
+                        file_link = attempt_to_get_file_from_overlay(entries[i])
 
                     if file_link:
                         doctorates.append({
@@ -110,37 +110,37 @@ def get_file_link(entry):
         return None  # No file available
 
 
-def attempt_to_get_file_from_overlay():
-    """Attempt to retrieve file link by clicking the copy icon and opening the overlay."""
+def attempt_to_get_file_from_overlay(entry):
+    """Attempt to retrieve file link by clicking the copy icon inside a specific entry."""
     button_selector = "i.fa.fa-copy"
     overlay_selector = "div.multiFilesDownloadOverlayPanel.ui-overlay-visible"
     file_link_selector = "div.filesDownloadPanel a.fileDownloadLink"
 
-    for attempt in range(3):  # Retry mechanism
-        try:
-            icon_elem = WebDriverWait(driver, 4).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, button_selector))
-            )
-            ActionChains(driver).move_to_element(icon_elem).click().perform()
-            ActionChains(driver).move_to_element(icon_elem).click().perform()
+    try:
+        # Find the copy icon inside the given entry
+        icon_elem = entry.find_element(By.CSS_SELECTOR, button_selector)
 
-            # Wait for the overlay panel to appear
-            WebDriverWait(driver, 5).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, overlay_selector))
-            )
-            break  # Exit loop if click succeeds
-        except Exception:
-            logging.warning(f"Retry {attempt + 1}/3: Failed to click copy icon, retrying...")
-            continue
+        time.sleep(0.5)
+        # Click on the icon to open the overlay
+        ActionChains(driver).move_to_element(icon_elem).click().perform()
 
-    time.sleep(2)  # Ensure files are loaded
+        # Wait for the overlay panel to appear
+        WebDriverWait(driver, 5).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, overlay_selector))
+        )
 
-    # Get all file links inside the overlay panel
-    file_elems = driver.find_elements(By.CSS_SELECTOR, file_link_selector)
-    if file_elems:
-        return file_elems[0].get_attribute("href")  # Select the first file
-    else:
-        logging.warning("⚠️ No file links found in overlay panel.")
+        time.sleep(2)  # Ensure files are loaded
+
+        # Get all file links inside the overlay panel
+        file_elems = entry.find_elements(By.CSS_SELECTOR, file_link_selector)
+        if file_elems:
+            return file_elems[0].get_attribute("href")  # Select the first file
+        else:
+            logging.warning("⚠️ No file links found in overlay panel.")
+            return None
+
+    except Exception as e:
+        logging.error(f"Failed to retrieve file from overlay: {e}")
         return None
 
 
