@@ -12,6 +12,10 @@ This project is a web scraper designed to collect medical data in Polish, which 
 ### Requirements
 - Python 3.x
 - Grobid (full or reduced version) container running
+- Grobid client
+  ```sh
+  pip install grobid-client
+  ```
 - Required Python dependencies
 
 ## Usage
