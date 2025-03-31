@@ -35,12 +35,14 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
     while True:
         try:
             entries = get_entries()
+            number_of_entries = len(entries)
+            number_of_processed = 0
             logging.info(f"Found {len(entries)} doctorates on this page.")
 
             for i in range(len(entries)):
                 try:
                     # Re-locate elements to avoid stale element error
-                    entries = get_entries()
+                    # entries = get_entries()
                     title, doctorate_url = get_title_and_url(entries[i])
                     file_link = get_file_link(entries[i])
 
@@ -61,9 +63,17 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                         empty_doctorates += 1
                         logging.warning(f"⚠️ No file link found for: {title}")
 
+                    number_of_processed += 1
+
                 except (StaleElementReferenceException, NoSuchElementException) as e:
                     logging.warning(f"⚠️ Stale element encountered for entry {i}. Skipping this entry.")
-                    continue  # Skip this entry if it becomes stale
+                    break
+
+            if number_of_processed < number_of_entries:
+                # retry stale
+                driver.refresh()
+                time.sleep(2)  # Wait for the page to load
+                continue
 
         except Exception as e:
             logging.error(f"Error scraping page: {e}")
@@ -79,7 +89,7 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
 
             logging.info("Clicking Next page...")
             next_button.click()
-            time.sleep(5)  # Wait for next page to load
+            time.sleep(3)  # Wait for next page to load
 
         except Exception as e:
             logging.error(f"Error navigating to the next page. Reached the last page.")
@@ -129,7 +139,7 @@ def attempt_to_get_file_from_overlay(entry):
             EC.visibility_of_element_located((By.CSS_SELECTOR, overlay_selector))
         )
 
-        time.sleep(2)  # Ensure files are loaded
+        time.sleep(1)  # Ensure files are loaded
 
         # Get all file links inside the overlay panel
         file_elems = entry.find_elements(By.CSS_SELECTOR, file_link_selector)
@@ -140,7 +150,7 @@ def attempt_to_get_file_from_overlay(entry):
             return None
 
     except Exception as e:
-        logging.error(f"Failed to retrieve file from overlay: {e}")
+        logging.error(f"Failed to retrieve file from overlay.")
         return None
 
 
