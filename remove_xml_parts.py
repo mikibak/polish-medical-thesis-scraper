@@ -1,5 +1,5 @@
 # Program for removing XML parts from the xml files scraped from the Polish Medical Thesis database.
-
+import glob
 import os
 import re
 import shutil
@@ -92,17 +92,10 @@ def doctorate_execute(doc, i):
     doc.at[i, "Text"] = remove_xml_parts(f"doct/{title}/doc.grobid.tei.xml")
 
 
-# Usage example
-if __name__ == "__main__":
-    socket.setdefaulttimeout(60)
-
-    df_doc = pd.read_csv("./Smaller_Files/doctorates_1.csv")
-
+def process_one(file_path):
+    df_doc = pd.read_csv(file_path)
     display.display(df_doc)
     doctorate_count = len(df_doc)
-
-    if not len(next(os.walk('doct'))[1]) < df_doc['Title'].nunique():
-        exit(0)
 
     timeout_counter = 5
     while timeout_counter > 0:
@@ -111,4 +104,13 @@ if __name__ == "__main__":
             executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
 
     df_doc = df_doc.dropna(subset=["Text"])
-    df_doc.to_csv("doctorates_with_text_1.csv", sep='|', index=False)
+    output_file = file_path.replace("doctorates_", "doctorates_with_text_")
+    df_doc.to_csv(output_file, sep='|', index=False)
+
+
+if __name__ == "__main__":
+    socket.setdefaulttimeout(60)
+    csv_files = glob.glob("./doctorates_*.csv")
+    for file in csv_files:
+        process_one(file)
+
