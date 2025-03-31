@@ -53,34 +53,40 @@ def remove_xml_parts(file_path):
 
 def doctorate_execute(doc, i):
     print("Processing document ", i + 1, "/", len(doc))
-    title = doc["Title"][i].replace(" ", "_").replace('./', '').replace('/', '_')
-    if not os.path.exists(f"doct/{title}/doc.grobid.tei.xml"):
-        try:
-            os.makedirs(f"doct/{title}")
-        except FileExistsError:
-            pass
+    title = re.sub(r'[<>:"/\\|?*]', '_', doc["Title"][i])
+    title = re.sub(r'\s+', ' ', title).strip().replace(' ', '_')[:255]
 
-        if not is_pdf_valid(f"doct/{title}/doc.pdf"):
+    try:
+        if not os.path.exists(f"doct/{title}/doc.grobid.tei.xml"):
             try:
-                print(f"pdf {title} download")
-                URL.urlretrieve(doc["File"][i], filename=f"doct/{title}/doc.pdf")
+                os.makedirs(f"doct/{title}")
+            except FileExistsError:
+                pass
+
+            if not is_pdf_valid(f"doct/{title}/doc.pdf"):
+                try:
+                    print(f"pdf {title} download")
+                    URL.urlretrieve(doc["File"][i], filename=f"doct/{title}/doc.pdf")
+                except Exception as e:
+                    print(f"url error: {e}")
+
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "grobid_client.grobid_client", "--input", f".\\doct\\{title}",
+                     "processFulltextDocument"],
+                    cwd=os.getcwd())
             except Exception as e:
-                print(f"url error: {e}")
+                print(f"grobid error: {e}")
 
-        try:
-            subprocess.run(
-                [sys.executable, "-m", "grobid_client.grobid_client", "--input", f".\\doct\\{title}",
-                 "processFulltextDocument"],
-                cwd=os.getcwd())
-        except Exception as e:
-            print(f"grobid error: {e}")
+            if not is_pdf_valid(f"doct/{title}/doc.pdf"):
+                print(f"pdf {title} is not valid")
+                shutil.rmtree(f"doct/{title}")
 
-        if not is_pdf_valid(f"doct/{title}/doc.pdf"):
-            print(f"pdf {title} is not valid")
-            shutil.rmtree(f"doct/{title}")
+        else:
+            print(f"xml {title} exists")
+    except Exception as e:
+        print(f"??? {e}")
 
-    else:
-        print(f"xml {title} exists")
 
     print(f"Processing {title}.grobid.tei.xml")
     doc.at[i, "Text"] = remove_xml_parts(f"doct/{title}/doc.grobid.tei.xml")
@@ -95,8 +101,11 @@ if __name__ == "__main__":
     display.display(df_doc)
     doctorate_count = len(df_doc)
 
-    timeout_counter = 1
-    while len(next(os.walk('doct'))[1]) < doctorate_count and timeout_counter > 0:
+    if not len(next(os.walk('doct'))[1]) < df_doc['Title'].nunique():
+        exit(0)
+
+    timeout_counter = 5
+    while timeout_counter > 0:
         timeout_counter -= 1
         with ThreadPoolExecutor() as executor:
             executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
