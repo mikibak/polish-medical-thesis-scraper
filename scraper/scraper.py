@@ -32,6 +32,8 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
     driver.get(url)
     time.sleep(2)  # Wait for the page to load
 
+    processed_entries = set()  # Keep track of already processed URLs
+
     while True:
         try:
             entries = get_entries()
@@ -49,6 +51,11 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                     if not file_link:
                         file_link = attempt_to_get_file_from_overlay(entries[i])
 
+                    if doctorate_url in processed_entries:
+                        logging.info(f"Skipping already processed entry: {title}")
+                        number_of_processed += 1
+                        continue  # Avoid duplicates
+
                     if file_link:
                         doctorates.append({
                             "Title": title,
@@ -58,6 +65,7 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                             "File": file_link
                         })
                         id += 1
+                        processed_entries.add(doctorate_url)
                         logging.info(f"✅ Added {id}: {title} - {file_link}")
                     else:
                         empty_doctorates += 1
