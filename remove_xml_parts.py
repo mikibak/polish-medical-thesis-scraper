@@ -1,7 +1,9 @@
 # Program for removing XML parts from the xml files scraped from the Polish Medical Thesis database.
-
+import glob
 import os
 import re
+import shutil
+import socket
 import sys
 import time
 import urllib.request as URL
@@ -51,42 +53,64 @@ def remove_xml_parts(file_path):
 
 def doctorate_execute(doc, i):
     print("Processing document ", i + 1, "/", len(doc))
-    title = doc["Title"][i].replace(" ", "_").replace('./', '').replace('/', '_')
-    try:
-        os.makedirs(f"doct/{title}")
-    except FileExistsError:
-        pass
-
-    for l in range(5):
-        if is_pdf_valid(f"doct/{title}/doc.pdf") and os.path.exists(f"doct/{title}/doc.pdf"):
-            break
-        try:
-            URL.urlretrieve(doc["File"][i], filename=f"doct/{title}/doc.pdf")
-            break
-        except Exception as e:
-            print(e)
-            time.sleep(1 * l)
+    title = re.sub(r'[<>:"/\\|?*]', '_', doc["Title"][i])
+    title = re.sub(r'\s+', ' ', title).strip().replace(' ', '_')[:255]
 
     try:
-        subprocess.run(
-            [sys.executable, "-m", "grobid_client.grobid_client", "--input", f".\\doct\\{title}",
-             "processFulltextDocument"],
-            cwd=os.getcwd())
-        print(f"Processing {title}.grobid.tei.xml")
-        doc.at[i, "Text"] = remove_xml_parts(f"doct/{title}/doc.grobid.tei.xml")
+        if not os.path.exists(f"doct/{title}/doc.grobid.tei.xml"):
+            try:
+                os.makedirs(f"doct/{title}")
+            except FileExistsError:
+                pass
+
+            if not is_pdf_valid(f"doct/{title}/doc.pdf"):
+                try:
+                    print(f"pdf {title} download")
+                    URL.urlretrieve(doc["File"][i], filename=f"doct/{title}/doc.pdf")
+                except Exception as e:
+                    print(f"url error: {e}")
+
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "grobid_client.grobid_client", "--input", f".\\doct\\{title}",
+                     "processFulltextDocument"],
+                    cwd=os.getcwd())
+            except Exception as e:
+                print(f"grobid error: {e}")
+
+            if not is_pdf_valid(f"doct/{title}/doc.pdf"):
+                print(f"pdf {title} is not valid")
+                shutil.rmtree(f"doct/{title}")
+
+        else:
+            print(f"xml {title} exists")
     except Exception as e:
-        print(e)
+        print(f"??? {e}")
 
 
-# Usage example
-if __name__ == "__main__":
-    df_doc = pd.read_csv("./Smaller_Files/doctorates_3.csv")
+    print(f"Processing {title}.grobid.tei.xml")
+    doc.at[i, "Text"] = remove_xml_parts(f"doct/{title}/doc.grobid.tei.xml")
 
+
+def process_one(file_path):
+    df_doc = pd.read_csv(file_path)
     display.display(df_doc)
     doctorate_count = len(df_doc)
 
-    with ThreadPoolExecutor() as executor:
-        executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
+    timeout_counter = 5
+    while timeout_counter > 0:
+        timeout_counter -= 1
+        with ThreadPoolExecutor() as executor:
+            executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
 
     df_doc = df_doc.dropna(subset=["Text"])
-    df_doc.to_csv("doctorates_with_text_6.csv", sep='|', index=False)
+    output_file = file_path.replace("doctorates_", "doctorates_with_text_")
+    df_doc.to_csv(output_file, sep='|', index=False)
+
+
+if __name__ == "__main__":
+    socket.setdefaulttimeout(60)
+    csv_files = glob.glob("./doctorates_*.csv")
+    for file in csv_files:
+        process_one(file)
+
