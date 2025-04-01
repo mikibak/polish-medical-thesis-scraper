@@ -47,7 +47,7 @@ python pdf_to_text/2_download_and_process_pdf_files.py
 ```
 This will extract text from the downloaded PDFs and save them to doctorates_with_text_*.csv
 
-### 4. Place text from all batches into .txt files
+### 5. Place text from all batches into .txt files
 ```sh
 python pdf_to_text/3_extract_csv_to_txt_files.py
 ```
