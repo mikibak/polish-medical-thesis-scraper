@@ -12,7 +12,27 @@ import IPython.display as display
 import subprocess
 from PyPDF2 import PdfReader, PdfWriter
 from concurrent.futures import ThreadPoolExecutor
+import spacy
+from spacy.cli import download
+from spacy.language import Language
+from spacy_langdetect import LanguageDetector
 
+@Language.factory("language_detector")
+def create_language_detector(nlp, name):
+    return LanguageDetector()
+
+def detect_language(text):
+    doc = nlp_en(text)
+    return doc._.language['language']
+
+def filter_paragraphs_by_lang(paragraphs):
+    filtered_text = " ".join([p for p in paragraphs if detect_language(p) != "en"])
+    return filtered_text
+
+def filter_sentences_by_lang(text):
+    sentences = text.split(". ")
+    filtered_text = ". ".join([s for s in sentences if detect_language(s) != "en"])
+    return filtered_text
 
 def is_pdf_valid(file_path):
     try:
@@ -25,7 +45,6 @@ def is_pdf_valid(file_path):
 
 def remove_xml_parts(file_path):
     """Remove XML parts from the given XML file."""
-
     # save title of file
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
@@ -42,8 +61,8 @@ def remove_xml_parts(file_path):
     # Step 2: Remove any remaining XML tags inside the paragraphs
     clean_paragraphs = [re.sub(r'<[^>]+>', '', p).strip() for p in p_matches]
 
-    # Step 3: Join the paragraphs into one text
-    final_text = " ".join(clean_paragraphs)
+    # Step 3: Remove fragments in English and join the paragraphs into one text
+    final_text = filter_paragraphs_by_lang(clean_paragraphs)
 
     # Remove references to bibliography eg. "[35]"
     clean_text = re.sub(r'\[\d+\]', '', final_text)
@@ -90,6 +109,8 @@ def doctorate_execute(doc, i):
 
     print(f"Processing {title}.grobid.tei.xml")
     doc.at[i, "Text"] = remove_xml_parts(f"doct/{title}/doc.grobid.tei.xml")
+    with open(f"{title}.txt", "w", encoding="utf-8") as file:
+        file.write(doc.at[i, "Text"])
 
 
 def process_one(file_path):
@@ -110,6 +131,11 @@ def process_one(file_path):
 
 if __name__ == "__main__":
     socket.setdefaulttimeout(60)
+    #download("pl_core_news_lg")
+    #download("en_core_web_lg")
+    nlp_en = spacy.load("en_core_web_lg")
+    nlp_en.add_pipe("language_detector", last=True)
+
     csv_files = glob.glob("./doctorates_*.csv")
     for file in csv_files:
         process_one(file)
