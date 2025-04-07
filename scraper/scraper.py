@@ -61,11 +61,12 @@ def save_doctorates_to_csv(doctorates):
     print(f"Metadata saved")
 
 
-def scrape_page(license, url, doctorates, empty_doctorates, id, ALLOWED_LICENSES):
+def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
+    id = 0
     driver.get(url)
-    time.sleep(2)  # Wait for the page to load
+    time.sleep(10)  # Wait for the page to load
 
     processed_entries = set()  # Keep track of already processed URLs
 
@@ -104,13 +105,13 @@ def scrape_page(license, url, doctorates, empty_doctorates, id, ALLOWED_LICENSES
                         logging.info(f"✅ Added {id}: {title} - {file_link}")
                     elif license and not file_link:
                         empty_doctorates += 1
-                        logging.warning(f"⚠️ Wrong license for file: {title}")
+                        logging.info(f"⚠️ Wrong file link for file: {title}")
                     elif file_link and not license:
                         empty_doctorates += 1
-                        logging.warning(f"⚠️ Wrong license for: {title}")
+                        logging.info(f"⚠️ Wrong license for: {title}")
                     else:
                         empty_doctorates += 1
-                        logging.warning(f"⚠️ No file link and wrong license for: {title}")
+                        logging.info(f"⚠️ No file link and wrong license for: {title}")
 
                     number_of_processed += 1
 
@@ -138,7 +139,7 @@ def scrape_page(license, url, doctorates, empty_doctorates, id, ALLOWED_LICENSES
 
             logging.info("Clicking Next page...")
             next_button.click()
-            time.sleep(3)  # Wait for next page to load
+            time.sleep(10)  # Wait for next page to load
 
         except Exception as e:
             logging.info(f"Reached the last page.")
@@ -184,7 +185,7 @@ def get_license(file_element, ALLOWED_LICENSES):
             logging.error(f"Failed to retrieve tooltip.")
             return None
 
-        tooltip_text = tooltips[0].text
+        tooltip_text = tooltips[-1].text
 
         allowed, license_name = is_license_allowed(tooltip_text)
         if allowed:
@@ -242,15 +243,16 @@ if __name__ == "__main__":
         level=logging.INFO
     )
 
-    # List of pre-filtered URLs (already contains only allowed licenses)
     with open('config.json', 'r') as f:
         config = json.load(f)
-        FILTERED_URLS = config["FILTERED_URLS"]
+        URL = config["URL"]
         ALLOWED_LICENSES = config["ALLOWED_LICENSES"]
+        HEADLESS_BROWSER = config["HEADLESS_BROWSER"]
 
     # Configure Selenium options
     chrome_options = Options()
-    # chrome_options.add_argument("--headless")  # Run headless mode for speed
+    if HEADLESS_BROWSER == 1:
+        chrome_options.add_argument("--headless")  # Run headless mode for speed
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
@@ -259,15 +261,8 @@ if __name__ == "__main__":
 
     doctorates = []
     empty_doctorates = 0
-    id = 0
-    added_empty_doctorates = 0
-    added_id = 0
 
-    # Scrape each filtered URL
-    for url in FILTERED_URLS:
-        added_empty_doctorates, added_id = scrape_page(url[0], url[1], doctorates, empty_doctorates, id, ALLOWED_LICENSES)
-        empty_doctorates += added_empty_doctorates
-        id += added_id
+    empty_doctorates = scrape_page(URL, doctorates, empty_doctorates, ALLOWED_LICENSES)
 
     # Close WebDriver
     driver.quit()

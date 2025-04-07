@@ -1,8 +1,5 @@
 {
-    "FILTERED_URLS": [
-        ["CC BY-SA", "https://ppm.edu.pl/resultList.seam?aq=.%3Aca2a18e81f674e01a71e1adb8f31a7e8&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864532"],
-        ["CC BY-NC", "https://ppm.edu.pl/resultList.seam?aq=.%3Aee6549ffc7dd4be0bd1ee75316dafe55&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864505"],
-        ["CC BY", "https://ppm.edu.pl/resultList.seam?aq=.%3Ab10aa19e712b47a39463f17f3401e58a&r=phd&ps=100&t=snippet&showRel=false&lang=pl&pn=1&cid=1864536"]
-    ],
-    "ALLOWED_LICENSES": ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY"]
+    "URL": "https://ppm.edu.pl/search/phd?affil=&ps=100&t=simple&showRel=false&lang=pl&qp=openAccess%253Dtrue%2526hasFileAttached%253Dtrue%2526D&cid=708510&pn=2",
+    "ALLOWED_LICENSES": ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY"],
+    "HEADLESS_BROWSER": 0
 }
