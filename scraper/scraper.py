@@ -65,6 +65,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     id = 0
+    total_id = -1
     driver.get(url)
     time.sleep(10)  # Wait for the page to load
 
@@ -79,8 +80,8 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES):
 
             for i in range(len(entries)):
                 try:
-                    # Re-locate elements to avoid stale element error
-                    # entries = get_entries()
+                    total_id += 1
+
                     title, doctorate_url = get_title_and_url(entries[i])
                     file_link, license = get_file_link(entries[i], ALLOWED_LICENSES)
 
@@ -102,21 +103,21 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES):
                         })
                         id += 1
                         processed_entries.add(doctorate_url)
-                        logging.info(f"✅ Added {id}: {title} - {file_link}")
+                        logging.info(f"Added entry {total_id}, file id {id}: {title} - {file_link}")
                     elif license and not file_link:
                         empty_doctorates += 1
-                        logging.info(f"⚠️ Wrong file link for file: {title}")
+                        logging.info(f"Wrong file link for file: {title}")
                     elif file_link and not license:
                         empty_doctorates += 1
-                        logging.info(f"⚠️ Wrong license for: {title}")
+                        logging.info(f"Wrong license for: {title}")
                     else:
                         empty_doctorates += 1
-                        logging.info(f"⚠️ No file link and wrong license for: {title}")
+                        logging.info(f"No file link and wrong license for: {title}")
 
                     number_of_processed += 1
 
                 except (StaleElementReferenceException, NoSuchElementException) as e:
-                    logging.warning(f"⚠️ Stale element encountered for entry {i}. Skipping this entry.")
+                    logging.warning(f"Stale element encountered for entry {i}. Skipping this entry.")
                     break
 
             if number_of_processed < number_of_entries:
@@ -228,11 +229,11 @@ def attempt_to_get_file_from_overlay(entry, ALLOWED_LICENSES):
             license = get_license(file_element, ALLOWED_LICENSES)
             return file_element.get_attribute("href"), license  # Select the first file
         else:
-            logging.warning("⚠️ No file links found in overlay panel.")
+            logging.warning("No file links found in overlay panel.")
             return None, None
 
     except Exception as e:
-        logging.error(f"Failed to retrieve file from overlay.")
+        logging.warning(f"Failed to retrieve file from overlay.")
         return None, None
 
 
@@ -240,7 +241,12 @@ if __name__ == "__main__":
     # Logging setup
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(message)s",
-        level=logging.INFO
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.INFO,
+        handlers = [
+            logging.FileHandler("debug.log"),
+            logging.StreamHandler()
+        ]
     )
 
     with open('config.json', 'r') as f:
