@@ -244,7 +244,7 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S',
         level=logging.INFO,
         handlers = [
-            logging.FileHandler("debug.log"),
+            logging.FileHandler("debug.log", 'w', 'utf-8'),
             logging.StreamHandler()
         ]
     )
