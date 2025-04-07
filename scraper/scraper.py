@@ -11,6 +11,41 @@ import pandas as pd
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import json
+import re
+ALL_LICENSES = ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY", "CC BY-ND", "CC BY-NC-ND"]
+
+def normalize_license(text):
+    # Replace -, _, or whitespace with a single space
+    text = re.sub(r"[-_\s]+", " ", text.strip())
+    # Remove extra spaces and normalize to match list
+    return text.upper()
+
+
+def find_license(license_text):
+    # Build regex to find something starting with CC
+    pattern = r"(CC[-_\s]*BY([-_\s]*(NC|ND))?([-_\s]*SA)?([-_\s]*ND)?)"
+    match = re.search(pattern, license_text, re.IGNORECASE)
+    if not match:
+        return None
+
+    found = match.group(0)
+    normalized = normalize_license(found)
+
+    # Try to match normalized against ALL_LICENSES
+    for lic in ALL_LICENSES:
+        if normalize_license(lic) == normalized:
+            return lic  # Return the canonical form
+
+    return None  # No match found
+
+
+def is_license_allowed(license_text):
+    license_found = find_license(license_text)
+    if not license_found:
+        return False, None
+
+    allowed = license_found in ALLOWED_LICENSES
+    return allowed, license_found
 
 
 def save_doctorates_to_csv(doctorates):
@@ -26,7 +61,7 @@ def save_doctorates_to_csv(doctorates):
     print(f"Metadata saved")
 
 
-def scrape_page(license, url, doctorates, empty_doctorates, id):
+def scrape_page(license, url, doctorates, empty_doctorates, id, ALLOWED_LICENSES):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     driver.get(url)
@@ -46,17 +81,17 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                     # Re-locate elements to avoid stale element error
                     # entries = get_entries()
                     title, doctorate_url = get_title_and_url(entries[i])
-                    file_link = get_file_link(entries[i])
+                    file_link, license = get_file_link(entries[i], ALLOWED_LICENSES)
 
                     if not file_link:
-                        file_link = attempt_to_get_file_from_overlay(entries[i])
+                        file_link, license = attempt_to_get_file_from_overlay(entries[i], ALLOWED_LICENSES)
 
                     if doctorate_url in processed_entries:
                         logging.info(f"Skipping already processed entry: {title}")
                         number_of_processed += 1
                         continue  # Avoid duplicates
 
-                    if file_link:
+                    if file_link and license:
                         doctorates.append({
                             "Title": title,
                             "URL": doctorate_url,
@@ -67,9 +102,15 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
                         id += 1
                         processed_entries.add(doctorate_url)
                         logging.info(f"✅ Added {id}: {title} - {file_link}")
+                    elif license and not file_link:
+                        empty_doctorates += 1
+                        logging.warning(f"⚠️ Wrong license for file: {title}")
+                    elif file_link and not license:
+                        empty_doctorates += 1
+                        logging.warning(f"⚠️ Wrong license for: {title}")
                     else:
                         empty_doctorates += 1
-                        logging.warning(f"⚠️ No file link found for: {title}")
+                        logging.warning(f"⚠️ No file link and wrong license for: {title}")
 
                     number_of_processed += 1
 
@@ -100,7 +141,7 @@ def scrape_page(license, url, doctorates, empty_doctorates, id):
             time.sleep(3)  # Wait for next page to load
 
         except Exception as e:
-            logging.error(f"Error navigating to the next page. Reached the last page.")
+            logging.info(f"Reached the last page.")
             break
 
     return empty_doctorates, id
@@ -119,16 +160,45 @@ def get_title_and_url(entry):
     return title, doctorate_url
 
 
-def get_file_link(entry):
+def get_file_link(entry, ALLOWED_LICENSES):
     """Try to get the file download link from the entry."""
     try:
-        file_elem = entry.find_element(By.CSS_SELECTOR, ".fileDownloadLink")
-        return file_elem.get_attribute("href")
+        file_element = entry.find_element(By.CSS_SELECTOR, ".fileDownloadLink")
+        license = get_license(file_element, ALLOWED_LICENSES)
+        return file_element.get_attribute("href"), license
     except:
-        return None  # No file available
+        return None, None  # No file available
 
 
-def attempt_to_get_file_from_overlay(entry):
+def get_license(file_element, ALLOWED_LICENSES):
+    """Try to get the file download link from the entry if license is acceptable."""
+    try:
+        # Hover over the file element to trigger the tooltip
+        ActionChains(driver).move_to_element(file_element).perform()
+
+        # Wait for the tooltip to appear
+        tooltips = driver.find_elements(By.CSS_SELECTOR, ".fileInfoTooltip")
+        tooltips = list(filter(lambda element: element.text != '', tooltips))
+
+        if tooltips[0] is None:
+            logging.error(f"Failed to retrieve tooltip.")
+            return None
+
+        tooltip_text = tooltips[0].text
+
+        allowed, license_name = is_license_allowed(tooltip_text)
+        if allowed:
+            return license_name
+        else:
+            return None
+
+    except Exception as e:
+        # Handle no file, no tooltip, timeout, etc.
+        return None
+
+
+
+def attempt_to_get_file_from_overlay(entry, ALLOWED_LICENSES):
     """Attempt to retrieve file link by clicking the copy icon inside a specific entry."""
     button_selector = "i.fa.fa-copy"
     overlay_selector = "div.multiFilesDownloadOverlayPanel.ui-overlay-visible"
@@ -138,12 +208,13 @@ def attempt_to_get_file_from_overlay(entry):
         # Find the copy icon inside the given entry
         icon_elem = entry.find_element(By.CSS_SELECTOR, button_selector)
 
-        time.sleep(0.5)
+        time.sleep(1)
         # Click on the icon to open the overlay
-        ActionChains(driver).move_to_element(icon_elem).click().perform()
+        action = webdriver.ActionChains(driver)
+        action.move_to_element(icon_elem).pause(0.5).click().perform()
 
         # Wait for the overlay panel to appear
-        WebDriverWait(driver, 5).until(
+        WebDriverWait(driver, 20).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, overlay_selector))
         )
 
@@ -152,14 +223,16 @@ def attempt_to_get_file_from_overlay(entry):
         # Get all file links inside the overlay panel
         file_elems = entry.find_elements(By.CSS_SELECTOR, file_link_selector)
         if file_elems:
-            return file_elems[0].get_attribute("href")  # Select the first file
+            file_element = file_elems[0]
+            license = get_license(file_element, ALLOWED_LICENSES)
+            return file_element.get_attribute("href"), license  # Select the first file
         else:
             logging.warning("⚠️ No file links found in overlay panel.")
-            return None
+            return None, None
 
     except Exception as e:
         logging.error(f"Failed to retrieve file from overlay.")
-        return None
+        return None, None
 
 
 if __name__ == "__main__":
@@ -173,10 +246,11 @@ if __name__ == "__main__":
     with open('config.json', 'r') as f:
         config = json.load(f)
         FILTERED_URLS = config["FILTERED_URLS"]
+        ALLOWED_LICENSES = config["ALLOWED_LICENSES"]
 
     # Configure Selenium options
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run headless mode for speed
+    # chrome_options.add_argument("--headless")  # Run headless mode for speed
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
@@ -191,7 +265,7 @@ if __name__ == "__main__":
 
     # Scrape each filtered URL
     for url in FILTERED_URLS:
-        added_empty_doctorates, added_id = scrape_page(url[0], url[1], doctorates, empty_doctorates, id)
+        added_empty_doctorates, added_id = scrape_page(url[0], url[1], doctorates, empty_doctorates, id, ALLOWED_LICENSES)
         empty_doctorates += added_empty_doctorates
         id += added_id
 
