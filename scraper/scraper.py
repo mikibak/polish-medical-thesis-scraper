@@ -72,12 +72,13 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
     id = START_INDEX
     total_id = page_id*100
     driver.get(url+str(START_PAGE))
-    time.sleep(10)  # Wait for the page to load
+    time.sleep(20)  # Wait for the page to load
 
     processed_entries = set()  # Keep track of already processed URLs
 
     while True:
         try:
+            page_doctorates = []
             page_id += 1
             if page_id >= END_PAGE:
                 logging.info(f"Reached last page specified in config, page: {page_id}")
@@ -104,13 +105,14 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
                         continue  # Avoid duplicates
 
                     if file_link and license:
-                        doctorates.append({
+                        page_doctorates.append({
                             "Title": title,
                             "URL": doctorate_url,
                             "License": license,
                             "ID": id,
                             "File": file_link
                         })
+                        doctorates.append(page_doctorates[-1])
                         processed_entries.add(doctorate_url)
                         logging.info(f"Added entry {total_id}, file id {id}: {title} - {file_link}")
                         id += 1
@@ -146,11 +148,11 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
             next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
             if "ui-state-disabled" in next_button.get_attribute("class"):
                 logging.info("Reached the last page. No more pages to scrape.")
-                return empty_doctorates, id  # No more pages, exit the loop
+                return empty_doctorates  # No more pages, exit the loop
 
             logging.info(f"Saving page {page_id}")
-            save_doctorates_to_csv(doctorates, ["ID", "Title", "URL", "License"], "doctorates_metadata.csv")
-            save_doctorates_to_csv(doctorates, ["Title", "URL", "License", "ID", "File"], "file_links.csv")
+            save_doctorates_to_csv(page_doctorates, ["ID", "Title", "URL", "License"], "doctorates_metadata.csv")
+            save_doctorates_to_csv(page_doctorates, ["Title", "URL", "License", "ID", "File"], "file_links.csv")
             logging.info(f"Saved page {page_id}")
 
             logging.info("Clicking Next page...")
@@ -161,7 +163,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
             logging.info(f"Reached the last page.")
             break
 
-    return empty_doctorates, id
+    return empty_doctorates
 
 
 def get_entries():
