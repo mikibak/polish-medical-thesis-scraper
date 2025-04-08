@@ -2,7 +2,7 @@
     "URL": "https://ppm.edu.pl/search/phd?affil=&ps=100&t=simple&showRel=false&lang=pl&qp=openAccess%253Dtrue%2526hasFileAttached%253Dtrue%2526D&cid=708510&pn=",
     "ALLOWED_LICENSES": ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY"],
     "HEADLESS_BROWSER": 1,
-    "START_INDEX": 2000,
-    "START_PAGE": 32,
-    "END_PAGE": 39
+    "START_INDEX": 2433,
+    "START_PAGE": 39,
+    "END_PAGE": 42
 }
