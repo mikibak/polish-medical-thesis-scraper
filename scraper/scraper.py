@@ -12,6 +12,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import json
 import re
+import csv
+import os
 ALL_LICENSES = ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY", "CC BY-ND", "CC BY-NC-ND"]
 
 def normalize_license(text):
@@ -49,30 +51,39 @@ def is_license_allowed(license_text):
 
 
 def save_doctorates_to_csv(doctorates):
-    # Get the field names from the first dictionary
     fieldnames = ["ID", "Title", "URL", "License"]
-    
-    with open("doctorates_metadata.csv", mode='w', newline='', encoding='utf-8') as file:
+    file_path = "doctorates_metadata.csv"
+
+    # Check if file exists and is not empty
+    file_exists = os.path.isfile(file_path)
+    file_empty = not file_exists or os.path.getsize(file_path) == 0
+
+    with open(file_path, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
+        if file_empty:
+            writer.writeheader()
         for doc in doctorates:
             writer.writerow({key: doc.get(key, "") for key in fieldnames})
 
     print(f"Metadata saved")
 
 
-def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES):
+def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX, START_PAGE, END_PAGE):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
-    id = 0
-    total_id = -1
-    driver.get(url)
+    page_id = START_PAGE - 1
+    id = START_INDEX
+    total_id = page_id*100
+    driver.get(url+str(START_PAGE))
     time.sleep(10)  # Wait for the page to load
 
     processed_entries = set()  # Keep track of already processed URLs
 
     while True:
         try:
+            page_id += 1
+            if page_id >= END_PAGE:
+                logging.info(f"Reached last page specified in config, page: {page_id}")
             entries = get_entries()
             number_of_entries = len(entries)
             number_of_processed = 0
@@ -244,7 +255,7 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S',
         level=logging.INFO,
         handlers = [
-            logging.FileHandler("debug.log", 'w', 'utf-8'),
+            logging.FileHandler("debug.log", 'a', 'utf-8'),
             logging.StreamHandler()
         ]
     )
@@ -254,6 +265,9 @@ if __name__ == "__main__":
         URL = config["URL"]
         ALLOWED_LICENSES = config["ALLOWED_LICENSES"]
         HEADLESS_BROWSER = config["HEADLESS_BROWSER"]
+        START_INDEX = config["START_INDEX"]
+        START_PAGE = config["START_PAGE"]
+        END_PAGE = config["END_PAGE"]
 
     # Configure Selenium options
     chrome_options = Options()
@@ -268,7 +282,7 @@ if __name__ == "__main__":
     doctorates = []
     empty_doctorates = 0
 
-    empty_doctorates = scrape_page(URL, doctorates, empty_doctorates, ALLOWED_LICENSES)
+    empty_doctorates = scrape_page(URL, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX, START_PAGE, END_PAGE)
 
     # Close WebDriver
     driver.quit()
