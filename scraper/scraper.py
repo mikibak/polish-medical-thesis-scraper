@@ -50,10 +50,7 @@ def is_license_allowed(license_text):
     return allowed, license_found
 
 
-def save_doctorates_to_csv(doctorates):
-    fieldnames = ["ID", "Title", "URL", "License"]
-    file_path = "doctorates_metadata.csv"
-
+def save_doctorates_to_csv(doctorates, fieldnames, file_path):
     # Check if file exists and is not empty
     file_exists = os.path.isfile(file_path)
     file_empty = not file_exists or os.path.getsize(file_path) == 0
@@ -84,6 +81,8 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
             page_id += 1
             if page_id >= END_PAGE:
                 logging.info(f"Reached last page specified in config, page: {page_id}")
+                return empty_doctorates, id
+
             entries = get_entries()
             number_of_entries = len(entries)
             number_of_processed = 0
@@ -112,9 +111,9 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
                             "ID": id,
                             "File": file_link
                         })
-                        id += 1
                         processed_entries.add(doctorate_url)
                         logging.info(f"Added entry {total_id}, file id {id}: {title} - {file_link}")
+                        id += 1
                     elif license and not file_link:
                         empty_doctorates += 1
                         logging.info(f"Wrong file link for file: {title}")
@@ -148,6 +147,11 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
             if "ui-state-disabled" in next_button.get_attribute("class"):
                 logging.info("Reached the last page. No more pages to scrape.")
                 return empty_doctorates, id  # No more pages, exit the loop
+
+            logging.info(f"Saving page {page_id}")
+            save_doctorates_to_csv(doctorates, ["ID", "Title", "URL", "License"], "doctorates_metadata.csv")
+            save_doctorates_to_csv(doctorates, ["Title", "URL", "License", "ID", "File"], "file_links.csv")
+            logging.info(f"Saved page {page_id}")
 
             logging.info("Clicking Next page...")
             next_button.click()
@@ -289,8 +293,3 @@ if __name__ == "__main__":
 
     # Output results
     logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached: {empty_doctorates}")
-
-    save_doctorates_to_csv(doctorates)
-
-    df_doc = pd.DataFrame(data=doctorates)
-    df_doc.to_csv("file_links.csv", index=False)
