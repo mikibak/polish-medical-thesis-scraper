@@ -109,7 +109,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
             page_id += 1
             if page_id >= END_PAGE:
                 logging.info(f"Reached last page specified in config, page: {page_id}")
-                return empty_doctorates, id
+                return empty_doctorates
 
             entries = get_entries()
             number_of_entries = len(entries)
@@ -321,4 +321,4 @@ if __name__ == "__main__":
     driver.quit()
 
     # Output results
-    logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached: {empty_doctorates}")
+    logging.info(f"Scraping complete. Total doctorates collected: {len(doctorates)}; Doctorates without pdf attached or wrong license: {empty_doctorates}")
