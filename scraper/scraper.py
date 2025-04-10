@@ -2,12 +2,10 @@ import logging
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import time
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
-import csv
-import pandas as pd
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import json
@@ -15,6 +13,35 @@ import re
 import csv
 import os
 ALL_LICENSES = ["CC BY-SA", "CC BY-NC", "CC BY-NC-SA", "CC BY", "CC BY-ND", "CC BY-NC-ND"]
+
+
+def navigate_to_page(page_number):
+    try:
+        # Click the button to activate input
+        button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CLASS_NAME, "page-inplace-input-inactive"))
+        )
+        button.click()
+
+        # Wait for the input field to appear
+        input_field = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.CLASS_NAME, "entitiesDataListPageInput"))
+        )
+
+        # Clear the existing value
+        input_field.send_keys(Keys.DELETE)
+
+        # Enter the new page number
+        input_field.send_keys(str(page_number))
+
+        # Press Enter
+        input_field.send_keys(Keys.ENTER)
+
+        # Wait 15 seconds for the page to load
+        time.sleep(15)
+
+    except Exception as e:
+        print(f"Error during navigation: {e}")
 
 def normalize_license(text):
     # Replace -, _, or whitespace with a single space
@@ -71,8 +98,8 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
     page_id = START_PAGE - 1
     id = START_INDEX
     total_id = page_id*100
-    driver.get(url+str(START_PAGE))
-    time.sleep(20)  # Wait for the page to load
+    driver.get(url)
+    navigate_to_page(START_PAGE)
 
     processed_entries = set()  # Keep track of already processed URLs
 
