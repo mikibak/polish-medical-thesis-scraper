@@ -33,12 +33,13 @@ def navigate_to_page(page_number):
 
         # Enter the new page number
         input_field.send_keys(str(page_number))
+        time.sleep(0.5)
 
         # Press Enter
         input_field.send_keys(Keys.ENTER)
 
         # Wait 15 seconds for the page to load
-        time.sleep(15)
+        time.sleep(20)
 
     except Exception as e:
         print(f"Error during navigation: {e}")
