@@ -92,12 +92,11 @@ def save_doctorates_to_csv(doctorates, fieldnames, file_path):
     print(f"Metadata saved")
 
 
-def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX, START_PAGE, END_PAGE):
+def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_PAGE, END_PAGE):
     """Scrape all doctorate entries from a given results page, including pagination."""
     logging.info(f"Scraping results from: {url}")
     page_id = START_PAGE - 1
-    id = START_INDEX
-    total_id = page_id*100
+    id = page_id*100
     driver.get(url)
     navigate_to_page(START_PAGE)
 
@@ -118,7 +117,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
 
             for i in range(len(entries)):
                 try:
-                    total_id += 1
+                    id += 1
 
                     title, doctorate_url = get_title_and_url(entries[i])
                     file_link, license = get_file_link(entries[i], ALLOWED_LICENSES)
@@ -141,8 +140,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX
                         })
                         doctorates.append(page_doctorates[-1])
                         processed_entries.add(doctorate_url)
-                        logging.info(f"Added entry {total_id}, file id {id}: {title} - {file_link}")
-                        id += 1
+                        logging.info(f"Added doctorate {len(page_doctorates)-1} from entry {id}: {title} - {file_link}")
                     elif license and not file_link:
                         empty_doctorates += 1
                         logging.info(f"Wrong file link for file: {title}")
@@ -298,7 +296,6 @@ if __name__ == "__main__":
         URL = config["URL"]
         ALLOWED_LICENSES = config["ALLOWED_LICENSES"]
         HEADLESS_BROWSER = config["HEADLESS_BROWSER"]
-        START_INDEX = config["START_INDEX"]
         START_PAGE = config["START_PAGE"]
         END_PAGE = config["END_PAGE"]
 
@@ -315,7 +312,7 @@ if __name__ == "__main__":
     doctorates = []
     empty_doctorates = 0
 
-    empty_doctorates = scrape_page(URL, doctorates, empty_doctorates, ALLOWED_LICENSES, START_INDEX, START_PAGE, END_PAGE)
+    empty_doctorates = scrape_page(URL, doctorates, empty_doctorates, ALLOWED_LICENSES, START_PAGE, END_PAGE)
 
     # Close WebDriver
     driver.quit()
