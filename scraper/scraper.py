@@ -183,7 +183,7 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_PAGE,
 
             logging.info("Clicking Next page...")
             next_button.click()
-            time.sleep(10)  # Wait for next page to load
+            time.sleep(20)  # Wait for next page to load
 
         except Exception as e:
             logging.info(f"Reached the last page.")
