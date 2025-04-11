@@ -170,16 +170,16 @@ def scrape_page(url, doctorates, empty_doctorates, ALLOWED_LICENSES, START_PAGE,
 
         # Pagination handling
         try:
+            logging.info(f"Saving page {page_id}")
+            save_doctorates_to_csv(page_doctorates, ["ID", "Title", "URL", "License"], "doctorates_metadata.csv")
+            save_doctorates_to_csv(page_doctorates, ["Title", "URL", "License", "ID", "File"], "file_links.csv")
+            logging.info(f"Saved page {page_id}")
+
             # Check for "Next" button to navigate to the next page
             next_button = driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
             if "ui-state-disabled" in next_button.get_attribute("class"):
                 logging.info("Reached the last page. No more pages to scrape.")
                 return empty_doctorates  # No more pages, exit the loop
-
-            logging.info(f"Saving page {page_id}")
-            save_doctorates_to_csv(page_doctorates, ["ID", "Title", "URL", "License"], "doctorates_metadata.csv")
-            save_doctorates_to_csv(page_doctorates, ["Title", "URL", "License", "ID", "File"], "file_links.csv")
-            logging.info(f"Saved page {page_id}")
 
             logging.info("Clicking Next page...")
             next_button.click()
