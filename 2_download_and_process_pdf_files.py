@@ -129,6 +129,11 @@ def download_doctorates(doc, i):
         try:
             if not os.path.exists(f"doct/{title}/doc.grobid.tei.xml") and not is_pdf_valid(f"doct/{title}/doc.pdf"):
                 try:
+                    os.makedirs(f"doct/{title}")
+                except FileExistsError:
+                    pass
+
+                try:
                     print(f"{title}.pdf download")
                     URL.urlretrieve(doc["File"][i], filename=f"doct/{title}/doc.pdf")
                 except Exception as e:
