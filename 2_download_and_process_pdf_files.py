@@ -15,6 +15,7 @@ import spacy
 from spacy.cli import download
 from spacy.language import Language
 from spacy_langdetect import LanguageDetector
+from utils.Labeling_text import training
 
 @Language.factory("language_detector")
 def create_language_detector(nlp, name):
@@ -146,12 +147,11 @@ def process_one(file_path):
     display.display(df_doc)
     doctorate_count = len(df_doc)
 
+    for i in range(doctorate_count):
+        download_doctorates(df_doc, i)
 
-    with ThreadPoolExecutor() as executor:
-        executor.map(lambda i: download_doctorates(df_doc, i), range(doctorate_count))
-
-    with ThreadPoolExecutor() as executor:
-        executor.map(lambda i: doctorate_execute(df_doc, i), range(doctorate_count))
+    for i in range(doctorate_count):
+        doctorate_execute(df_doc, i)
 
     df_doc = df_doc.dropna(subset=["Text"])
     output_file = file_path.replace("doctorates_", "doctorates_with_text_")
